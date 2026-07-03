@@ -1,0 +1,35 @@
+{
+    "name": "semitexa/files",
+    "description": "Semitexa Files — an in-OS file manager that browses real files/folders via the local bridge",
+    "type": "semitexa-module",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Semitexa",
+            "email": "support@semitexa.com"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "semitexa/core": "*",
+        "semitexa/llm": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Semitexa\\Files\\": "src/"
+        }
+    },
+    "extra": {
+        "semitexa-module": {
+            "name": "files",
+            "description": "In-OS file manager — browses real files/folders through the local bridge"
+        }
+    },
+    "version": "0.0.1",
+    "keywords": [
+        "semitexa",
+        "files",
+        "file-manager",
+        "os"
+    ]
+}
