@@ -26,32 +26,39 @@ final class FilesAppHandler implements TypedHandlerInterface
 <title>Files</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
+  /* Theme tokens — dark defaults; [data-mode=light] flips the palette. The app
+     resolves the OS theme itself (fetch /os/preferences + the shell's auto rule),
+     so it works identically in web iframes and OS-mode native windows. */
+  :root{color-scheme:dark;--bg:#161622;--text:var(--text);--text-2:var(--text-2);--text-3:var(--text-3);--mute:var(--mute);--dim:var(--dim);
+    --line-rgb:148,163,184;--accent:var(--accent);--accent-rgb:55,183,255;--folder:var(--folder)}
+  :root[data-mode=light]{color-scheme:light;--bg:#f4f7fb;--text:#1d2a38;--text-2:#243447;--text-3:#3b4c61;--mute:#55677e;--dim:#7c8ba0;
+    --line-rgb:100,116,139;--accent:#1e7fb8;--accent-rgb:30,127,184;--folder:#b48206}
   *{box-sizing:border-box} html,body{margin:0;height:100%}
-  body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#161622;color:#dbe7ff;display:flex;flex-direction:column;font-size:14px}
-  .bar{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid rgba(148,163,184,.18);min-height:44px}
+  body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;font-size:14px}
+  .bar{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid rgba(var(--line-rgb),.18);min-height:44px}
   .crumb{flex:1;display:flex;align-items:center;gap:2px;flex-wrap:wrap;font-size:12.5px;overflow:hidden}
-  .crumb .seg{color:#a8b4cc;cursor:pointer;padding:2px 5px;border-radius:6px;white-space:nowrap}
-  .crumb .seg:hover{background:rgba(148,163,184,.14);color:#dbe7ff}
-  .crumb .seg.cur{color:#dbe7ff;font-weight:600;cursor:default}
-  .crumb .sep{color:#5d6b86}
-  .act{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:8px;border:1px solid rgba(55,183,255,.4);
-       background:rgba(55,183,255,.12);color:#37b7ff;font:600 12.5px 'IBM Plex Sans';cursor:pointer;white-space:nowrap}
-  .act:hover{background:rgba(55,183,255,.22)}
+  .crumb .seg{color:var(--text-3);cursor:pointer;padding:2px 5px;border-radius:6px;white-space:nowrap}
+  .crumb .seg:hover{background:rgba(var(--line-rgb),.14);color:var(--text)}
+  .crumb .seg.cur{color:var(--text);font-weight:600;cursor:default}
+  .crumb .sep{color:var(--dim)}
+  .act{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:8px;border:1px solid rgba(var(--accent-rgb),.4);
+       background:rgba(var(--accent-rgb),.12);color:var(--accent);font:600 12.5px 'IBM Plex Sans';cursor:pointer;white-space:nowrap}
+  .act:hover{background:rgba(var(--accent-rgb),.22)}
   .main{flex:1;display:flex;min-height:0}
-  .list{width:46%;min-width:220px;overflow:auto;border-right:1px solid rgba(148,163,184,.14);padding:6px}
-  .row{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:8px;cursor:pointer;color:#cdd9ee}
-  .row:hover{background:rgba(148,163,184,.12)}
-  .row.sel{background:rgba(55,183,255,.16);color:#eaf2ff}
-  .row .ico{flex:0 0 auto;display:flex;color:#8d9bb8}
-  .row.dir .ico{color:#eab308}
+  .list{width:46%;min-width:220px;overflow:auto;border-right:1px solid rgba(var(--line-rgb),.14);padding:6px}
+  .row{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:8px;cursor:pointer;color:var(--text-2)}
+  .row:hover{background:rgba(var(--line-rgb),.12)}
+  .row.sel{background:rgba(var(--accent-rgb),.16);color:var(--text)}
+  .row .ico{flex:0 0 auto;display:flex;color:var(--mute)}
+  .row.dir .ico{color:var(--folder)}
   .row .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .row .sz{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5d6b86}
+  .row .sz{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim)}
   .preview{flex:1;overflow:auto;padding:0}
-  .preview pre{margin:0;padding:16px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.6;color:#cdd9ee;white-space:pre-wrap;word-break:break-word}
-  .hint{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:#5d6b86;text-align:center;padding:24px;font-size:13px}
-  .err{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:10px;color:#8d9bb8;text-align:center;padding:30px}
-  .err b{color:#dbe7ff} .err code{font-family:'IBM Plex Mono',monospace;background:rgba(148,163,184,.14);padding:2px 7px;border-radius:6px;color:#a8b4cc;font-size:12px}
-  .empty{color:#5d6b86;padding:14px;font-size:13px}
+  .preview pre{margin:0;padding:16px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.6;color:var(--text-2);white-space:pre-wrap;word-break:break-word}
+  .hint{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--dim);text-align:center;padding:24px;font-size:13px}
+  .err{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:10px;color:var(--mute);text-align:center;padding:30px}
+  .err b{color:var(--text)} .err code{font-family:'IBM Plex Mono',monospace;background:rgba(var(--line-rgb),.14);padding:2px 7px;border-radius:6px;color:var(--text-3);font-size:12px}
+  .empty{color:var(--dim);padding:14px;font-size:13px}
   .status{font-size:12px;color:#5eead4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34%;opacity:0;transition:opacity .25s}
   .status.on{opacity:1}
 </style></head>
@@ -63,6 +70,23 @@ final class FilesAppHandler implements TypedHandlerInterface
   </div>
 <script>
 (function(){
+  // Follow the OS theme: the pref lives server-side; 'auto' resolves with the
+  // SAME rule as the shell (prefers-color-scheme, else dark 19:00–07:00).
+  function applyMode(mode){
+    var eff=(mode==='light'||mode==='dark')?mode:(function(){
+      try{ if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark'; }catch(e){}
+      var h=new Date().getHours(); return (h>=19||h<7)?'dark':'light';
+    })();
+    var el=document.documentElement;
+    if(el.getAttribute('data-mode')!==eff){ el.setAttribute('data-mode',eff); el.style.colorScheme=eff; }
+  }
+  function syncMode(){
+    fetch('/os/preferences',{headers:{'Accept':'application/json'}})
+      .then(function(r){return r.json();}).then(function(d){ applyMode((d&&d.theme_mode)||'auto'); })
+      .catch(function(){});
+  }
+  syncMode(); window.addEventListener('focus', syncMode); setInterval(syncMode, 15000);
+
   var BRIDGE='http://127.0.0.1:8777';
   var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
   var FOLDER='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>';
