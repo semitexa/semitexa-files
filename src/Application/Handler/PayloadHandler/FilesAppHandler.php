@@ -52,9 +52,11 @@ final class FilesAppHandler implements TypedHandlerInterface
   .err{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:10px;color:#8d9bb8;text-align:center;padding:30px}
   .err b{color:#dbe7ff} .err code{font-family:'IBM Plex Mono',monospace;background:rgba(148,163,184,.14);padding:2px 7px;border-radius:6px;color:#a8b4cc;font-size:12px}
   .empty{color:#5d6b86;padding:14px;font-size:13px}
+  .status{font-size:12px;color:#5eead4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34%;opacity:0;transition:opacity .25s}
+  .status.on{opacity:1}
 </style></head>
 <body>
-  <div class="bar"><div class="crumb" id="crumb"></div><button class="act" id="edit" title="Open this folder in a code editor">Open in editor</button></div>
+  <div class="bar"><div class="crumb" id="crumb"></div><span class="status" id="status"></span><button class="act" id="attach" title="Attach the selected file — or this folder — to your world (the Weave graph)">＋ My world</button><button class="act" id="edit" title="Open this folder in a code editor">Open in editor</button></div>
   <div class="main">
     <div class="list" id="list"></div>
     <div class="preview" id="preview"><div class="hint">Pick a file to preview it here.</div></div>
@@ -66,7 +68,7 @@ final class FilesAppHandler implements TypedHandlerInterface
   var FOLDER='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>';
   var FILE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/></svg>';
   var list=document.getElementById('list'), preview=document.getElementById('preview'), crumb=document.getElementById('crumb');
-  var cur='', root='';
+  var cur='', root='', selFile=null, statusTimer=null;
   function fmtSize(n){ if(n<1024)return n+' B'; if(n<1048576)return (n/1024).toFixed(0)+' KB'; return (n/1048576).toFixed(1)+' MB'; }
   function showErr(){
     list.innerHTML='';
@@ -97,10 +99,11 @@ final class FilesAppHandler implements TypedHandlerInterface
   }
   function load(path){
     fetch(BRIDGE+'/list?path='+encodeURIComponent(path||'')).then(function(r){ if(!r.ok) throw 0; return r.json(); })
-      .then(function(d){ cur=d.path; root=d.root; renderCrumb(d); renderList(d); })
+      .then(function(d){ cur=d.path; root=d.root; selFile=null; renderCrumb(d); renderList(d); })
       .catch(function(){ showErr(); });
   }
   function openFile(path, name){
+    selFile=path;
     Array.prototype.forEach.call(list.querySelectorAll('.row'),function(r){ r.classList.toggle('sel', r.dataset.path===path); });
     preview.innerHTML='<div class="hint">Loading…</div>';
     fetch(BRIDGE+'/read?path='+encodeURIComponent(path)).then(function(r){ return r.json(); })
@@ -115,6 +118,27 @@ final class FilesAppHandler implements TypedHandlerInterface
     else openFile(row.dataset.path, row.querySelector('.nm').textContent);
   });
   crumb.addEventListener('click',function(e){ var s=e.target.closest('.seg'); if(s && s.dataset.path && !s.classList.contains('cur')) load(s.dataset.path); });
+  function toast(msg){
+    var el=document.getElementById('status');
+    el.textContent=msg; el.classList.add('on');
+    clearTimeout(statusTimer); statusTimer=setTimeout(function(){ el.classList.remove('on'); },4500);
+  }
+  // Files-as-nodes: attach the selected file (else the current folder) to the
+  // Weave. The OS decides where it hangs (best-matching entity, else you);
+  // the shell hears os:weave-changed and refreshes an open Workspace live.
+  document.getElementById('attach').addEventListener('click',function(){
+    var isFile=!!selFile, path=isFile?selFile:cur;
+    if(!path) return;
+    fetch('/os/weave/attach',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path:path,kind:isFile?'file':'folder'})})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.ok){ toast(d.error||'Couldn\u2019t attach.'); return; }
+        toast('Added to your world'+(d.parent&&!d.parent.is_self?' \u2014 under \u201C'+d.parent.title+'\u201D':'')+'.');
+        try{ (window.parent||window).postMessage({type:'os:weave-changed'},'*'); }catch(e){}
+      })
+      .catch(function(){ toast('Couldn\u2019t attach.'); });
+  });
   document.getElementById('edit').addEventListener('click',function(){
     if(!cur) return;
     fetch(BRIDGE+'/open?path='+encodeURIComponent(cur)+'&with=code').catch(function(){});
