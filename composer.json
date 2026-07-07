@@ -25,7 +25,6 @@
             "description": "In-OS file manager — browses real files/folders through the local bridge"
         }
     },
-    "version": "0.0.1",
     "keywords": [
         "semitexa",
         "files",
