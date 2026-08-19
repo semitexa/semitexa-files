@@ -153,7 +153,9 @@ final class FilesAppHandler implements TypedHandlerInterface
     if(BRIDGE_TOKEN!==null) return Promise.resolve(BRIDGE_TOKEN);
     return fetch(BRIDGE+'/token').then(function(r){ return r.json(); })
       .then(function(d){ BRIDGE_TOKEN=(d&&d.token)||''; return BRIDGE_TOKEN; })
-      .catch(function(){ BRIDGE_TOKEN=''; return ''; });
+      // Don't cache a failure (bridge not up yet / old bridge without
+      // /token) — leave BRIDGE_TOKEN null so the next call retries.
+      .catch(function(){ return ''; });
   }
   function bridgeFetch(path, opts){
     return bridgeAuth().then(function(t){
