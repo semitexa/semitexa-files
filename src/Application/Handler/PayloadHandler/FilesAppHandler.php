@@ -145,6 +145,22 @@ final class FilesAppHandler implements TypedHandlerInterface
   syncMode(); window.addEventListener('focus', syncMode); setInterval(syncMode, 15000);
 
   var BRIDGE='http://127.0.0.1:8777';
+  // The bridge gates every side-effecting call behind a shared token that only
+  // loopback pages (this app) can obtain from /token. Fetched once, attached
+  // as a header on every bridge call via bridgeFetch.
+  var BRIDGE_TOKEN=null;
+  function bridgeAuth(){
+    if(BRIDGE_TOKEN!==null) return Promise.resolve(BRIDGE_TOKEN);
+    return fetch(BRIDGE+'/token').then(function(r){ return r.json(); })
+      .then(function(d){ BRIDGE_TOKEN=(d&&d.token)||''; return BRIDGE_TOKEN; })
+      .catch(function(){ BRIDGE_TOKEN=''; return ''; });
+  }
+  function bridgeFetch(path, opts){
+    return bridgeAuth().then(function(t){
+      opts=opts||{}; var h=opts.headers||{}; if(t){ h['X-Bridge-Token']=t; } opts.headers=h;
+      return fetch(BRIDGE+path, opts);
+    });
+  }
   var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
   var FOLDER='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>';
   var FILE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/></svg>';
@@ -240,11 +256,11 @@ final class FilesAppHandler implements TypedHandlerInterface
     document.getElementById('mkproj').addEventListener('click', function(){
       // Suggested home: SEMITEXA_USER_FILES if designated, else <bridge root>/Projects.
       var base=userFiles?Promise.resolve(userFiles.replace(/\/$/,'')):(
-        fetch(BRIDGE+'/list?path=').then(function(r){ return r.json(); }).then(function(d){ return d.root; })
+        bridgeFetch('/list?path=').then(function(r){ return r.json(); }).then(function(d){ return d.root; })
       );
       Promise.resolve(base).then(function(b){
         askName('Folder for “'+p.title+'”', b+'/Projects/'+p.title, function(full){
-          fetch(BRIDGE+'/fs/mkdirp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:full})})
+          bridgeFetch('/fs/mkdirp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:full})})
             .then(function(r){ return r.json(); })
             .then(function(d){
               if(!d.ok){ toast(d.error==='denied'?'Denied: outside the bridge root (check SEMITEXA_FILES_ROOT).':'Couldn’t create: '+(d.error||'?'), true); return; }
@@ -325,7 +341,7 @@ final class FilesAppHandler implements TypedHandlerInterface
   }
   function load(path){
     if(!within(path)) path=proj.root;
-    fetch(BRIDGE+'/list?path='+encodeURIComponent(path)).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+    bridgeFetch('/list?path='+encodeURIComponent(path)).then(function(r){ if(!r.ok) throw 0; return r.json(); })
       .then(function(d){ cur=d.path; selFile=null; lastListing=d; renderCrumb(); renderNav(d); renderFiles(d); })
       .catch(function(){ renderCrumb(); showErr(); });
   }
@@ -340,7 +356,7 @@ final class FilesAppHandler implements TypedHandlerInterface
       if(lastListing) renderFiles(lastListing); else load(cur);
     });
     var preview=document.getElementById('preview');
-    fetch(BRIDGE+'/read?path='+encodeURIComponent(path)).then(function(r){ return r.json(); })
+    bridgeFetch('/read?path='+encodeURIComponent(path)).then(function(r){ return r.json(); })
       .then(function(d){
         if(d.binary || d.content==null){ preview.innerHTML='<div class="hint">'+esc(name)+' can’t be previewed (binary or unreadable).</div>'; return; }
         preview.innerHTML='<pre>'+esc(d.content)+(d.truncated?'\n\n… (truncated)':'')+'</pre>';
@@ -417,7 +433,7 @@ final class FilesAppHandler implements TypedHandlerInterface
   }
   function fsOp(endpoint, body, okMsg){
     if(body.path===''){ toast('Folder not loaded — reopen the project first.', true); return; }
-    fetch(BRIDGE+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    bridgeFetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(!d.ok){
