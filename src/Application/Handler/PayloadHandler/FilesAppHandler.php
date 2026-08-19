@@ -151,10 +151,18 @@ final class FilesAppHandler implements TypedHandlerInterface
   var BRIDGE_TOKEN=null;
   function bridgeAuth(){
     if(BRIDGE_TOKEN!==null) return Promise.resolve(BRIDGE_TOKEN);
-    return fetch(BRIDGE+'/token').then(function(r){ return r.json(); })
-      .then(function(d){ BRIDGE_TOKEN=(d&&d.token)||''; return BRIDGE_TOKEN; })
+    return fetch(BRIDGE+'/token').then(function(r){
+      // A 403 here carries a parseable JSON error body — r.ok is the only
+      // signal that separates it from a real token grant.
+      if(!r.ok) throw new Error('token refused');
+      return r.json();
+    }).then(function(d){
+      if(!d || typeof d.token!=='string' || !d.token) throw new Error('no token');
+      BRIDGE_TOKEN=d.token;
+      return BRIDGE_TOKEN;
+    })
       // Don't cache a failure (bridge not up yet / old bridge without
-      // /token) — leave BRIDGE_TOKEN null so the next call retries.
+      // /token / refused) — leave BRIDGE_TOKEN null so the next call retries.
       .catch(function(){ return ''; });
   }
   function bridgeFetch(path, opts){
