@@ -6,6 +6,7 @@ namespace Semitexa\Files\Application\Handler\PayloadHandler;
 
 use Semitexa\Core\Attribute\AsPayloadHandler;
 use Semitexa\Core\Contract\TypedHandlerInterface;
+use Semitexa\Core\Http\CspNonce;
 use Semitexa\Core\Http\Response\ResourceResponse;
 use Semitexa\Files\Application\Payload\Request\FilesAppPayload;
 
@@ -531,7 +532,7 @@ final class FilesAppHandler implements TypedHandlerInterface
 HTML;
 
         return $resource
-            ->setContent($html)
+            ->setContent(CspNonce::stamp($html))
             ->setHeader('Content-Type', 'text/html; charset=utf-8');
     }
 }
