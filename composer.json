@@ -21,6 +21,11 @@
             "Semitexa\\Files\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Semitexa\\Files\\Tests\\": "tests/"
+        }
+    },
     "extra": {
         "semitexa-module": {
             "name": "files",
