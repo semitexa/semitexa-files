@@ -29,11 +29,16 @@ final class FilesAppHandlerTest extends TestCase
         }
     }
 
+    // verify:accept-test-change the script moved to Static/js/files-app.js; its lookups are read there, the page must link it
     #[Test]
     public function every_element_the_script_looks_up_is_defined_on_the_page(): void
     {
-        $html = (string) $this->render()->getContent();
-        preg_match_all("/getElementById\\('([A-Za-z0-9_-]+)'\\)/", $html, $m);
+        $page = (string) $this->render()->getContent();
+        self::assertMatchesRegularExpression('#<script src="/assets/files/js/files-app\\.js\\?v=[^"]+"></script>#', $page);
+        // The script also writes markup of its own, so an id it creates counts as defined.
+        $script = (string) file_get_contents(dirname(__DIR__, 2) . '/src/Application/Static/js/files-app.js');
+        $html = $page . $script;
+        preg_match_all("/getElementById\\('([A-Za-z0-9_-]+)'\\)/", $script, $m);
 
         self::assertNotEmpty($m[1]);
         foreach (array_unique($m[1]) as $id) {
