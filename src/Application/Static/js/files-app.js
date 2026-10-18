@@ -328,6 +328,7 @@
   }
   function fsOp(endpoint, body, okMsg){
     if(body.path===''){ toast('Folder not loaded — reopen the project first.', true); return; }
+    var forProj=proj;
     bridgeFetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
       .then(function(r){ return r.json(); })
       .then(function(d){
@@ -338,7 +339,8 @@
           return;
         }
         toast(okMsg);
-        load(cur);
+        // The operation succeeded; reload only if the user is still in the project it ran in.
+        if(proj && proj===forProj) load(cur);
       })
       .catch(function(){ toast('Bridge is not running — start bridged.py on this machine.', true); });
   }
