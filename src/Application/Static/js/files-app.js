@@ -69,7 +69,7 @@
     return parts.slice(0,3).join(' · ');
   }
   function showProjects(){
-    proj=null; cur=''; selFile=null;
+    loadSeq++; proj=null; cur=''; selFile=null;
     crumb.innerHTML='<span class="seg cur">Projects</span>';
     main.innerHTML='<div class="projects"><div class="hint" style="grid-column:1/-1">Loading your projects…</div></div>';
     fetch('/os/weave/projects',{headers:{'Accept':'application/json'}})
@@ -130,7 +130,7 @@
   // its folder right here (mkdirp on the bridge + attach in the Weave), or
   // point at the attach flows for an EXISTING folder.
   function showNoFolder(p){
-    proj=null;
+    loadSeq++; proj=null;
     crumb.innerHTML='<span class="seg" id="home">Projects</span><span class="sep">/</span><span class="seg cur">'+esc(p.title)+'</span>';
     main.innerHTML='<div class="err">'+PROJ_ICO+'<div><b>“'+esc(p.title)+'” has no folder attached yet.</b></div>'
       +'<div><button class="act" id="mkproj">Create a folder for this project…</button></div>'
@@ -221,11 +221,24 @@
     if(!n) html+='<div class="empty">No files in this folder.</div>';
     files.innerHTML=html;
   }
+  // Every /list call takes a ticket; only the newest one, for the project still
+  // open, may touch the DOM. A slower, older answer (or one that lands after
+  // the user went back to Projects) is dropped instead of repainting the
+  // explorer with another folder — and steering New file/folder there.
+  var loadSeq=0;
   function load(path){
     if(!within(path)) path=proj.root;
+    var seq=++loadSeq, forProj=proj;
+    function current(){ return seq===loadSeq && proj===forProj; }
     bridgeFetch('/list?path='+encodeURIComponent(path)).then(function(r){ if(!r.ok) throw 0; return r.json(); })
-      .then(function(d){ cur=d.path; selFile=null; lastListing=d; renderCrumb(); renderNav(d); renderFiles(d); })
-      .catch(function(){ renderCrumb(); showErr(); });
+      .then(function(d){
+        if(!current()) return;
+        // All-or-nothing: both panes must exist before anything is written.
+        if(!document.getElementById('nav') || !document.getElementById('files')) return;
+        if(!d || typeof d.path!=='string' || !within(d.path)) throw 0;
+        cur=d.path; selFile=null; lastListing=d; renderCrumb(); renderNav(d); renderFiles(d);
+      })
+      .catch(function(){ if(!current()) return; renderCrumb(); showErr(); });
   }
   // Preview takes over the RIGHT pane; the header's ✕ goes back to the files.
   function openFile(path, name){
