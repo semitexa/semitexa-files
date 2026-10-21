@@ -6,9 +6,13 @@ namespace Semitexa\Files\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Semitexa\Authorization\Attribute\AsProtectedPayload;
 use Semitexa\Core\Http\Response\ResourceResponse;
 use Semitexa\Files\Application\Handler\PayloadHandler\FilesAppHandler;
 use Semitexa\Files\Application\Payload\Request\FilesAppPayload;
+use Semitexa\Files\Application\Service\FilesSkill;
+use Semitexa\Llm\Attribute\AsAiSkill;
+use Semitexa\Os\Domain\Contract\OsSurfacePayloadInterface;
 
 /**
  * The Files dialog is one standalone page whose script drives the markup by
@@ -44,6 +48,48 @@ final class FilesAppHandlerTest extends TestCase
         foreach (array_unique($m[1]) as $id) {
             self::assertStringContainsString('id="' . $id . '"', $html, "the script looks up #{$id}, which nothing on the page defines");
         }
+    }
+
+    /**
+     * Since July every dark token named itself (--text:var(--text)): a cycle
+     * is invalid, so text, accent and folder colours silently fell away in
+     * the dark theme.
+     */
+    #[Test]
+    public function every_theme_token_has_a_value_in_both_palettes(): void
+    {
+        $html = (string) $this->render()->getContent();
+        self::assertSame(1, preg_match('/:root\{color-scheme:dark;([^}]*)\}/', $html, $dark));
+        self::assertSame(1, preg_match('/:root\[data-mode=light\]\{color-scheme:light;([^}]*)\}/', $html, $light));
+
+        $tokens = static function (string $block): array {
+            preg_match_all('/(--[a-z0-9-]+):([^;]+)/', $block, $m, PREG_SET_ORDER);
+            $out = [];
+            foreach ($m as [, $name, $value]) {
+                $out[$name] = trim($value);
+            }
+
+            return $out;
+        };
+        $darkTokens = $tokens($dark[1]);
+        $lightTokens = $tokens($light[1]);
+
+        self::assertSame(array_keys($darkTokens), array_keys($lightTokens), 'both palettes set the same tokens');
+        foreach ($darkTokens + $lightTokens as $name => $value) {
+            self::assertStringNotContainsString('var(', $value, "{$name} names another token instead of a colour");
+        }
+    }
+
+    #[Test]
+    public function the_window_is_a_console_surface_the_files_skill_opens(): void
+    {
+        $route = (new \ReflectionClass(FilesAppPayload::class))->getAttributes(AsProtectedPayload::class)[0]->newInstance();
+        $skill = (new \ReflectionClass(FilesSkill::class))->getAttributes(AsAiSkill::class)[0]->newInstance();
+
+        self::assertInstanceOf(OsSurfacePayloadInterface::class, new FilesAppPayload(), 'gated as an OS console window, not merely signed in');
+        self::assertSame('/os/app/files', $route->path);
+        self::assertSame($route->path, $skill->entry, 'the skill opens the window it names');
+        self::assertSame([], (new FilesAppPayload())->validate());
     }
 
     private function render(): ResourceResponse

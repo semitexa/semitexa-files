@@ -37,11 +37,13 @@ final class FilesAppHandler implements TypedHandlerInterface
 <title>Files</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
-  /* Theme tokens — dark defaults; [data-mode=light] flips the palette. The app
+  /* Theme tokens — dark defaults; [data-mode=light] flips the palette. A token
+     that names itself (--text:var(--text)) is a cycle, invalid, and silently
+     drops the colour: the dark values are written out. The app
      resolves the OS theme itself (fetch /os/preferences + the shell's auto rule),
      so it works identically in web iframes and OS-mode native windows. */
-  :root{color-scheme:dark;--bg:#161622;--text:var(--text);--text-2:var(--text-2);--text-3:var(--text-3);--mute:var(--mute);--dim:var(--dim);
-    --line-rgb:148,163,184;--accent:var(--accent);--accent-rgb:55,183,255;--folder:var(--folder)}
+  :root{color-scheme:dark;--bg:#161622;--text:#dbe7ff;--text-2:#cdd9ee;--text-3:#a8b4cc;--mute:#8d9bb8;--dim:#5d6b86;
+    --line-rgb:148,163,184;--accent:#37b7ff;--accent-rgb:55,183,255;--folder:#eab308}
   :root[data-mode=light]{color-scheme:light;--bg:#f4f7fb;--text:#1d2a38;--text-2:#243447;--text-3:#3b4c61;--mute:#55677e;--dim:#7c8ba0;
     --line-rgb:100,116,139;--accent:#1e7fb8;--accent-rgb:30,127,184;--folder:#b48206}
   *{box-sizing:border-box} html,body{margin:0;height:100%}
