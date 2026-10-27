@@ -87,8 +87,12 @@ final class FilesAppHandlerTest extends TestCase
             $names = array_keys($set);
             sort($names);
             self::assertSame($required, $names, "the {$palette} palette sets exactly the tokens the page uses");
+            // Each in the form its use needs: color:var(--text) takes a hex
+            // colour, rgba(var(--accent-rgb),.4) takes bare channels. Either
+            // form under the other name would leave the rule invalid.
             foreach ($set as $name => $value) {
-                self::assertMatchesRegularExpression('/^(#[0-9a-f]{6}|\d{1,3},\d{1,3},\d{1,3})$/', $value, "{$palette} {$name} is a colour, not another token");
+                $format = str_ends_with($name, '-rgb') ? '/^\d{1,3},\d{1,3},\d{1,3}$/' : '/^#[0-9a-f]{6}$/';
+                self::assertMatchesRegularExpression($format, $value, "{$palette} {$name} is a colour in the form its use needs");
             }
         }
     }
