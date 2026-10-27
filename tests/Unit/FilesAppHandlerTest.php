@@ -74,9 +74,22 @@ final class FilesAppHandlerTest extends TestCase
         $darkTokens = $tokens($dark[1]);
         $lightTokens = $tokens($light[1]);
 
-        self::assertSame(array_keys($darkTokens), array_keys($lightTokens), 'both palettes set the same tokens');
-        foreach ($darkTokens + $lightTokens as $name => $value) {
-            self::assertStringNotContainsString('var(', $value, "{$name} names another token instead of a colour");
+        // Every token the page reads must be set by each palette: equal key
+        // lists alone would still pass if a token vanished from both.
+        preg_match_all('/var\((--[a-z0-9-]+)\)/', $html, $used);
+        $required = array_values(array_unique($used[1]));
+        sort($required);
+        self::assertSame(['--accent', '--accent-rgb', '--bg', '--dim', '--folder', '--line-rgb', '--mute', '--text', '--text-2', '--text-3'], $required);
+
+        // Each palette is checked on its own: a union would let the dark value
+        // stand in for a broken light one of the same name.
+        foreach (['dark' => $darkTokens, 'light' => $lightTokens] as $palette => $set) {
+            $names = array_keys($set);
+            sort($names);
+            self::assertSame($required, $names, "the {$palette} palette sets exactly the tokens the page uses");
+            foreach ($set as $name => $value) {
+                self::assertMatchesRegularExpression('/^(#[0-9a-f]{6}|\d{1,3},\d{1,3},\d{1,3})$/', $value, "{$palette} {$name} is a colour, not another token");
+            }
         }
     }
 
