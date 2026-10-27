@@ -13,8 +13,7 @@ use Semitexa\Core\Http\Response\ResourceResponse;
  * The Files dialog body route (hosted as an iframe in the Focus zone). Accepts
  * an optional `?path=` so it can open at a specific folder (e.g. from a Weave
  * folder node).
- */
-/**
+ *
  * Console surface: gated by OsAdminGate, not merely by being signed in.
  *
  * This window mounts under /os/app, so a visitor authenticated by the host
