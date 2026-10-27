@@ -1,4 +1,7 @@
 (function(){
+  // The double-submit CSRF token (the readable XSRF-TOKEN cookie), echoed as
+  // X-CSRF-Token: without it a signed-in POST was answered 403.
+  function csrfToken(){var m=document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);return m?decodeURIComponent(m[1]):'';}
   // Follow the OS theme: the pref lives server-side; 'auto' resolves with the
   // SAME rule as the shell (prefers-color-scheme, else dark 19:00–07:00).
   function applyMode(mode){
@@ -147,7 +150,7 @@
             .then(function(d){
               if(!d.ok){ toast(d.error==='denied'?'Denied: outside the bridge root (check SEMITEXA_FILES_ROOT).':'Couldn’t create: '+(d.error||'?'), true); return; }
               // Hang the new folder off the project in the Weave, then open it.
-              fetch('/os/weave/attach',{method:'POST',headers:{'Content-Type':'application/json'},
+              fetch('/os/weave/attach',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken()},
                 body:JSON.stringify({path:d.path,kind:'folder',connect_to:p.title})})
                 .then(function(r){ return r.json(); })
                 .then(function(a){
@@ -358,7 +361,7 @@
       items.push({label:'Extract here', run:function(){ fsOp('/fs/extract',{path:path},'Extracted.'); }});
     }
     items.push({label:'＋ My world', run:function(){
-      fetch('/os/weave/attach',{method:'POST',headers:{'Content-Type':'application/json'},
+      fetch('/os/weave/attach',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken()},
         body:JSON.stringify({path:path,kind:type==='dir'?'folder':'file'})})
         .then(function(r){ return r.json(); })
         .then(function(d){
